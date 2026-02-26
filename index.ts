@@ -7,6 +7,7 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { homedir } from "node:os";
 import { join, dirname, basename } from "node:path";
 import { readFile, readdir, writeFile, mkdir } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 
 // Import core components
 import { MemoryStore } from "./src/store.js";
@@ -253,6 +254,20 @@ async function findPreviousSessionFile(sessionsDir: string, currentSessionFile?:
 }
 
 // ============================================================================
+// Version
+// ============================================================================
+
+function getPluginVersion(): string {
+  try {
+    const pkgUrl = new URL("./package.json", import.meta.url);
+    const pkg = JSON.parse(readFileSync(pkgUrl, "utf8")) as { version?: string };
+    return pkg.version || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+// ============================================================================
 // Plugin Definition
 // ============================================================================
 
@@ -291,8 +306,10 @@ const memoryLanceDBProPlugin = {
     const scopeManager = createScopeManager(config.scopes);
     const migrator = createMigrator(store);
 
+    const pluginVersion = getPluginVersion();
+
     api.logger.info(
-      `memory-lancedb-pro: plugin registered (db: ${resolvedDbPath}, model: ${config.embedding.model || "text-embedding-3-small"})`
+      `memory-lancedb-pro@${pluginVersion}: plugin registered (db: ${resolvedDbPath}, model: ${config.embedding.model || "text-embedding-3-small"})`
     );
 
     // ========================================================================
