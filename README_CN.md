@@ -325,7 +325,117 @@ openclaw config get plugins.slots.memory
 | **Jina**（推荐） | `jina-embeddings-v5-text-small` | `https://api.jina.ai/v1` | 1024 |
 | **OpenAI** | `text-embedding-3-small` | `https://api.openai.com/v1` | 1536 |
 | **Google Gemini** | `gemini-embedding-001` | `https://generativelanguage.googleapis.com/v1beta/openai/` | 3072 |
-| **Ollama**（本地） | `nomic-embed-text` | `http://localhost:11434/v1` | 768 |
+| **Ollama**（本地） | `nomic-embed-text` | `http://localhost:11434/v1` | _与本地模型输出一致_（建议显式设置 `embedding.dimensions`） |
+
+---
+
+## （可选）从 Session JSONL 自动蒸馏记忆（全自动）
+
+OpenClaw 会把每个 Agent 的完整会话自动落盘为 JSONL：
+
+- `~/.openclaw/agents/<agentId>/sessions/*.jsonl`
+
+但 JSONL 含大量噪声（tool 输出、系统块、重复回调等），**不建议直接把原文塞进 LanceDB**。
+
+本插件提供一个安全的 extractor 脚本 `scripts/jsonl_distill.py`，配合 OpenClaw 的 `cron` + 独立 distiller agent，实现“增量蒸馏 → 高质量记忆入库”：
+
+- 只读取每个 JSONL 文件**新增尾巴**（byte offset cursor），避免重复和 token 浪费
+- 生成一个小型 batch JSON
+- 由 distiller agent 把 batch 蒸馏成短、原子、可复用的记忆，再用 `memory_store` 写入
+
+### 你会得到什么
+
+- ✅ 全自动（每小时）
+- ✅ 多 Agent 支持（main + 各 bot）
+- ✅ 只处理新增内容（不回读）
+- ✅ 防自我吞噬：默认排除 `memory-distiller` 自己的 session
+
+### 脚本输出位置
+
+- Cursor：`~/.openclaw/state/jsonl-distill/cursor.json`
+- Batches：`~/.openclaw/state/jsonl-distill/batches/`
+
+> 脚本只读 session JSONL，不会修改原始日志。
+
+### 推荐部署（独立 distiller agent）
+
+#### 1）创建 distiller agent（示例用 gpt-5.2）
+
+```bash
+openclaw agents add memory-distiller \
+  --non-interactive \
+  --workspace ~/.openclaw/workspace-memory-distiller \
+  --model openai-codex/gpt-5.2
+```
+
+#### 2）初始化 cursor（模式 A：从现在开始，不回溯历史）
+
+先确定插件目录（PLUGIN_DIR）：
+
+```bash
+# 如果你按推荐方式 clone 到 workspace：
+#   PLUGIN_DIR="$HOME/.openclaw/workspace/plugins/memory-lancedb-pro"
+PLUGIN_DIR="/path/to/memory-lancedb-pro"
+
+python3 "$PLUGIN_DIR/scripts/jsonl_distill.py" init
+```
+
+#### 3）创建每小时 Cron（Asia/Shanghai）
+
+建议 cron message 以 `run ...` 开头，这样本插件的自适应检索会跳过自动 recall 注入（节省 token）。
+
+```bash
+MSG=$(cat <<'EOF'
+run jsonl memory distill
+
+Goal: Distill ONLY new content from OpenClaw session JSONL tails into high-quality LanceDB memories.
+
+Hard rules:
+- Incremental only: exec the extractor. Do NOT scan full history.
+- If extractor returns action=noop: stop immediately.
+- Store only reusable memories (rules, pitfalls, decisions, preferences, stable facts). Skip routine chatter.
+- Each memory: idiomatic English + final line `Keywords (zh): ...` (3-8 short phrases).
+- Keep each memory < 500 chars and atomic.
+- Caps: <= 3 memories per agent per run; <= 3 global per run.
+- Scope:
+  - broadly reusable -> global
+  - agent-specific -> agent:<agentId>
+
+Workflow:
+1) exec: python3 <PLUGIN_DIR>/scripts/jsonl_distill.py run
+2) Determine batch file (created/pending)
+3) memory_store(...) for selected memories
+4) exec: python3 <PLUGIN_DIR>/scripts/jsonl_distill.py commit --batch-file <batchFile>
+EOF
+)
+
+openclaw cron add \
+  --agent memory-distiller \
+  --name "jsonl-memory-distill (hourly)" \
+  --cron "0 * * * *" \
+  --tz "Asia/Shanghai" \
+  --session isolated \
+  --wake now \
+  --timeout-seconds 420 \
+  --stagger 5m \
+  --no-deliver \
+  --message "$MSG"
+```
+
+### scope 策略（非常重要）
+
+当蒸馏“所有 agents”时，务必显式设置 scope：
+
+- 跨 agent 通用规则/偏好/坑 → `scope=global`
+- agent 私有 → `scope=agent:<agentId>`
+
+否则不同 bot 的记忆会相互污染。
+
+### 回滚
+
+- 禁用/删除 cron：`openclaw cron disable <jobId>` / `openclaw cron rm <jobId>`
+- 删除 distiller agent：`openclaw agents delete memory-distiller`
+- 删除 cursor 状态：`rm -rf ~/.openclaw/state/jsonl-distill/`
 
 ---
 

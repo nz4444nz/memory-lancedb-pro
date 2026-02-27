@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5
+
+- Add: optional JSONL session distillation workflow (incremental cursor + batch format) via `scripts/jsonl_distill.py`.
+- Docs: document the JSONL distiller setup in README (EN) and README_CN (ZH).
+
 ## 1.0.4
 
 - Fix: `embedding.dimensions` is now parsed robustly (number / numeric string / env-var string), so it properly overrides hardcoded model dims (fixes Ollama `nomic-embed-text` dimension mismatch).
