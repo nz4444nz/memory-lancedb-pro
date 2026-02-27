@@ -1,9 +1,12 @@
 # Changelog
 
+## 1.0.9
+
+- Change: update default `retrieval.rerankModel` to `jina-reranker-v3` (still fully configurable).
+
 ## 1.0.8
 
 - Add: JSONL distill extractor supports optional agent allowlist via env var `OPENCLAW_JSONL_DISTILL_ALLOWED_AGENT_IDS` (default off / compatible).
-
 
 ## 1.0.7
 

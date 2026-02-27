@@ -26,7 +26,7 @@ export interface RetrievalConfig {
   filterNoise: boolean;
   /** Reranker API key (enables cross-encoder reranking) */
   rerankApiKey?: string;
-  /** Reranker model (default: jina-reranker-v2-base-multilingual) */
+  /** Reranker model (default: jina-reranker-v3) */
   rerankModel?: string;
   /** Reranker API endpoint (default: https://api.jina.ai/v1/rerank). */
   rerankEndpoint?: string;
@@ -90,7 +90,7 @@ export const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   recencyHalfLifeDays: 14,
   recencyWeight: 0.10,
   filterNoise: true,
-  rerankModel: "jina-reranker-v2-base-multilingual",
+  rerankModel: "jina-reranker-v3",
   rerankEndpoint: "https://api.jina.ai/v1/rerank",
   lengthNormAnchor: 500,
   hardMinScore: 0.35,
@@ -427,7 +427,7 @@ export class MemoryRetriever {
     if (this.config.rerank === "cross-encoder" && this.config.rerankApiKey) {
       try {
         const provider = this.config.rerankProvider || "jina";
-        const model = this.config.rerankModel || "jina-reranker-v2-base-multilingual";
+        const model = this.config.rerankModel || "jina-reranker-v3";
         const endpoint = this.config.rerankEndpoint || "https://api.jina.ai/v1/rerank";
         const documents = results.map(r => r.entry.text);
 

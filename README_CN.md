@@ -112,7 +112,7 @@ Query → BM25 FTS ─────┘
 
 ### 2. 跨编码器 Rerank
 
-- **Jina Reranker API**: `jina-reranker-v2-base-multilingual`（5s 超时保护）
+- **Jina Reranker API**: `jina-reranker-v3`（5s 超时保护）
 - **混合评分**: 60% cross-encoder score + 40% 原始融合分
 - **降级策略**: API 失败时回退到 cosine similarity rerank
 
@@ -315,7 +315,7 @@ openclaw config get plugins.slots.memory
     "minScore": 0.3,
     "rerank": "cross-encoder",
     "rerankApiKey": "${JINA_API_KEY}",
-    "rerankModel": "jina-reranker-v2-base-multilingual",
+    "rerankModel": "jina-reranker-v3",
     "candidatePoolSize": 20,
     "recencyHalfLifeDays": 14,
     "recencyWeight": 0.1,

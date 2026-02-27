@@ -314,7 +314,7 @@ openclaw config get plugins.slots.memory
     "minScore": 0.3,
     "rerank": "cross-encoder",
     "rerankApiKey": "${JINA_API_KEY}",
-    "rerankModel": "jina-reranker-v2-base-multilingual",
+    "rerankModel": "jina-reranker-v3",
     "rerankEndpoint": "https://api.jina.ai/v1/rerank",
     "rerankProvider": "jina",
     "candidatePoolSize": 20,
@@ -362,7 +362,7 @@ Cross-encoder reranking supports multiple providers via `rerankProvider`:
 
 | Provider | `rerankProvider` | Endpoint | Example Model |
 |----------|-----------------|----------|---------------|
-| **Jina** (default) | `jina` | `https://api.jina.ai/v1/rerank` | `jina-reranker-v2-base-multilingual` |
+| **Jina** (default) | `jina` | `https://api.jina.ai/v1/rerank` | `jina-reranker-v3` |
 | **SiliconFlow** (free tier available) | `siliconflow` | `https://api.siliconflow.com/v1/rerank` | `BAAI/bge-reranker-v2-m3`, `Qwen/Qwen3-Reranker-8B` |
 | **Pinecone** | `pinecone` | `https://api.pinecone.io/rerank` | `bge-reranker-v2-m3` |
 

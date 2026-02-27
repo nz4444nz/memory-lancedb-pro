@@ -2,7 +2,7 @@
   "id": "memory-lancedb-pro",
   "name": "Memory (LanceDB Pro)",
   "description": "Enhanced LanceDB-backed long-term memory with hybrid retrieval, multi-scope isolation, and management CLI",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "kind": "memory",
   "configSchema": {
     "type": "object",
@@ -108,7 +108,7 @@
           },
           "rerankModel": {
             "type": "string",
-            "default": "jina-reranker-v2-base-multilingual",
+            "default": "jina-reranker-v3",
             "description": "Reranker model name"
           },
           "rerankEndpoint": {
@@ -304,8 +304,8 @@
     },
     "retrieval.rerankModel": {
       "label": "Reranker Model",
-      "placeholder": "jina-reranker-v2-base-multilingual",
-      "help": "Reranker model name (e.g. jina-reranker-v2-base-multilingual, BAAI/bge-reranker-v2-m3)",
+      "placeholder": "jina-reranker-v3",
+      "help": "Reranker model name (e.g. jina-reranker-v3, BAAI/bge-reranker-v2-m3)",
       "advanced": true
     },
     "retrieval.rerankEndpoint": {
