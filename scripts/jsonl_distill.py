@@ -36,6 +36,22 @@ EXCLUDED_AGENT_IDS = {
     "memory-distiller",
 }
 
+# Source allowlist (optional quality control).
+# Default (env unset): allow all agents (except EXCLUDED_AGENT_IDS).
+# If set: only distill from the listed agent IDs.
+# Example:
+#   OPENCLAW_JSONL_DISTILL_ALLOWED_AGENT_IDS=main,code-agent
+ENV_ALLOWED_AGENT_IDS = "OPENCLAW_JSONL_DISTILL_ALLOWED_AGENT_IDS"
+
+
+def _get_allowed_agent_ids() -> Optional[set[str]]:
+    raw = os.environ.get(ENV_ALLOWED_AGENT_IDS, "").strip()
+    if not raw or raw in ("*", "all"):
+        return None
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    return set(parts) if parts else None
+
+
 
 NOISE_PREFIXES = (
     "✅ New session started",
@@ -175,11 +191,15 @@ def _list_session_files(agents_dir: Path) -> List[Tuple[str, Path]]:
     if not agents_dir.exists():
         return results
 
+    allowed_agent_ids = _get_allowed_agent_ids()
+
     for agent_dir in sorted(agents_dir.iterdir()):
         if not agent_dir.is_dir():
             continue
         agent_id = agent_dir.name
         if agent_id in EXCLUDED_AGENT_IDS:
+            continue
+        if allowed_agent_ids is not None and agent_id not in allowed_agent_ids:
             continue
         sessions_dir = agent_dir / "sessions"
         if not sessions_dir.exists():
