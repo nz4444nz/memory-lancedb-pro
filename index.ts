@@ -639,32 +639,53 @@ const memoryLanceDBProPlugin = {
     api.registerService({
       id: "memory-lancedb-pro",
       start: async () => {
-        try {
-          // Test components
-          const embedTest = await embedder.test();
-          const retrievalTest = await retriever.test();
+        // IMPORTANT: Do not block gateway startup on external network calls.
+        // If embedding/retrieval tests hang (bad network / slow provider), the gateway
+        // may never bind its HTTP port, causing restart timeouts.
 
-          api.logger.info(
-            `memory-lancedb-pro: initialized successfully ` +
-            `(embedding: ${embedTest.success ? 'OK' : 'FAIL'}, ` +
-            `retrieval: ${retrievalTest.success ? 'OK' : 'FAIL'}, ` +
-            `mode: ${retrievalTest.mode}, ` +
-            `FTS: ${retrievalTest.hasFtsSupport ? 'enabled' : 'disabled'})`
-          );
-
-          if (!embedTest.success) {
-            api.logger.warn(`memory-lancedb-pro: embedding test failed: ${embedTest.error}`);
+        const withTimeout = async <T>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+          let timeout: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeout = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+          });
+          try {
+            return await Promise.race([p, timeoutPromise]);
+          } finally {
+            if (timeout) clearTimeout(timeout);
           }
-          if (!retrievalTest.success) {
-            api.logger.warn(`memory-lancedb-pro: retrieval test failed: ${retrievalTest.error}`);
-          }
+        };
 
-          // Run initial backup after a short delay, then schedule daily
-          setTimeout(() => runBackup(), 60_000); // 1 min after start
-          backupTimer = setInterval(() => runBackup(), BACKUP_INTERVAL_MS);
-        } catch (error) {
-          api.logger.warn(`memory-lancedb-pro: startup test failed: ${String(error)}`);
-        }
+        const runStartupChecks = async () => {
+          try {
+            // Test components (bounded time)
+            const embedTest = await withTimeout(embedder.test(), 8_000, "embedder.test()");
+            const retrievalTest = await withTimeout(retriever.test(), 8_000, "retriever.test()");
+
+            api.logger.info(
+              `memory-lancedb-pro: initialized successfully ` +
+                `(embedding: ${embedTest.success ? "OK" : "FAIL"}, ` +
+                `retrieval: ${retrievalTest.success ? "OK" : "FAIL"}, ` +
+                `mode: ${retrievalTest.mode}, ` +
+                `FTS: ${retrievalTest.hasFtsSupport ? "enabled" : "disabled"})`
+            );
+
+            if (!embedTest.success) {
+              api.logger.warn(`memory-lancedb-pro: embedding test failed: ${embedTest.error}`);
+            }
+            if (!retrievalTest.success) {
+              api.logger.warn(`memory-lancedb-pro: retrieval test failed: ${retrievalTest.error}`);
+            }
+          } catch (error) {
+            api.logger.warn(`memory-lancedb-pro: startup checks failed: ${String(error)}`);
+          }
+        };
+
+        // Fire-and-forget: allow gateway to start serving immediately.
+        setTimeout(() => void runStartupChecks(), 0);
+
+        // Run initial backup after a short delay, then schedule daily
+        setTimeout(() => void runBackup(), 60_000); // 1 min after start
+        backupTimer = setInterval(() => void runBackup(), BACKUP_INTERVAL_MS);
       },
       stop: () => {
         if (backupTimer) {

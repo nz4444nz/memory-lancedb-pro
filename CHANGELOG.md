@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.10
+
+- Fix: avoid blocking OpenClaw gateway startup on external network calls by running startup self-checks in the background with timeouts.
+
 ## 1.0.9
 
 - Change: update default `retrieval.rerankModel` to `jina-reranker-v3` (still fully configurable).
